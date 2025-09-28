@@ -3,3 +3,5 @@
 
 *.pt
 *.pth
+!random_test_images/
+!random_test_images/*.jpg
