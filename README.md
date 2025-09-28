@@ -32,7 +32,9 @@ Here’s how I’ve laid everything out to keep it from getting messy:
 ├── configs/
 │   └── config.yaml          # Hydra configuration file for all hyperparameters
 ├── dataset_path/
-│   └── ...                 
+│   └── ...
+├── pages/
+│   └── ...                
 ├── outputs/
 │   └── YYYY-MM-DD/
 │       └── HH-MM-SS/        # Outputs from a single run (logs, model, etc.)
@@ -46,7 +48,8 @@ Here’s how I’ve laid everything out to keep it from getting messy:
 │   ├── model.py             # All nn.Module classes for the ViT architecture
 │   ├── dataset.py           # Your custom PyTorch Dataset and transforms
 ├── .gitignore
-├── train.py                 # The main script to start training
+├── app.py   
+├── train.py           # The main script to start training
 └── inference.py               # The script to run inference with a trained model
 ```
 ### How to Get It Running
@@ -131,7 +134,7 @@ My main goal for this project was to turn the concepts from the ViT paper into c
 The model you train on a custom dataset (like dataset used in original paper like `JFT-300M or ImageNet`) can serve as a base model for other similar tasks.
 The process of taking a trained model and further training it on a new, related task is called transfer learning or fine-tuning. This is a powerful technique to get good performance on a new task without having to train from scratch again.
 
-# This is the core thing which made ViT so much successfull and it is also it's downside that for a smaller dataset, conventional CNN architecture will out perform ViT because of in-built inductive Biasnes in CNNs.
+## This is the core thing which made ViT so much successfull and it is also it's downside that for a smaller dataset, conventional CNN architecture will out perform ViT because of in-built inductive Biasnes in CNNs.
 
 ### What's Next? (Future Plans 🚀)
 I'm excited to keep building on this project. Here are a few things I have in mind for the future:
@@ -140,6 +143,38 @@ I'm excited to keep building on this project. Here are a few things I have in mi
 
 - DDP Training: Implementing Distributed Data Parallel (DDP) to allow for much faster training across multiple GPUs.
 
-- Web Frontend: Build a simple frontend using Streamlit or Flask to provide a user-friendly interface for both training and inference.
+- Web Frontend: ~~Build a simple frontend using Streamlit or Flask to provide a user-friendly interface for both training and inference.~~ **Completed**
 
 - Cloud Deployment: Package the project with Docker and create a pipeline to train and deploy the model on a cloud platform like AWS, Azure, or GCP.
+
+---
+## Update - 1 : Adding Web Frontend
+
+As a Part of Furture plan as stated above, I built a Streamlit web interface to make this whole project easier to use.  
+Instead of editing configs and running long commands in the terminal, you can now just **click, upload, and run everything from your browser**.  
+
+### 📊 Training Studio
+- Choose hyperparameters from a simple UI (no need to touch YAML files if you don’t want to).  
+- Start single or multi-run experiments with Hydra.  
+- See real-time loss and accuracy and plots logs while training.  
+- Start or stop runs—without messing with the terminal.
+
+<img width="1000" height="536" alt="image" src="https://github.com/user-attachments/assets/2639e0c8-1b7c-41ee-8768-53394190587e" />
+
+
+
+### 🔍 Inference Studio
+- The app automatically finds all your trained models in `outputs/` and `multirun/`.  
+- View training history plots to compare runs.  
+- Drag-and-drop your own images (or use the sample ones provided).  
+- Show Predictions with the coinfidence score  
+- Check out the model architecture and configuration that produced the results.  
+<img width="1000" height="536" alt="image" src="https://github.com/user-attachments/assets/d5cf7eb1-0be1-4784-b7c6-e2c7acb408cf" />
+
+
+### 🚀 How to Run
+```bash
+streamlit run app.py
+```
+<img width="1000" height="751" alt="image" src="https://github.com/user-attachments/assets/a34b33f0-09c9-40c7-8491-0390708afcc5" />
+
