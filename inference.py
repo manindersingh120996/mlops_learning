@@ -18,6 +18,7 @@ elif torch.backends.mps.is_available() and torch.backends.mps.is_built():
     device = torch.device('mps')
 else:
     print("No accelerator available 🥺 ...using CPU for this task...")
+    device = torch.device('cpu')
 
 def find_experiment(search_dirs : list = ["outputs","multirun"]):
     """
