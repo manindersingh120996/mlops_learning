@@ -39,7 +39,12 @@ if __name__ == "__main__":
     parser.add_argument("--model_path",required=True)
     parser.add_argument("--model_name",default="Vit_Classifier_test_register")
     parser.add_argument("--run_id")
-    mlflow.set_tracking_uri("http://localhost:5000")
+    print(os.environ.get("MLFLOW_TRACKING_URI"))
+    MLFLOW_TRACKING_URI = os.environ.get(
+    "MLFLOW_TRACKING_URI",
+    "https://mlflow-server-ix2lz64yiq-uc.a.run.app/"
+)
+    mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
 
     arg = parser.parse_args()
     print(arg)
