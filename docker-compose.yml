@@ -1,0 +1,165 @@
+# Docker Compose v3.8 - Orchestration definition
+# This file declares a multi-service application as code
+
+version: '3.8'
+
+# Networks define isolated communication channels
+networks:
+  # Create a custom network for our services
+  vit-network:
+    driver: bridge  # Bridge network allows container-to-container communication
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16  # Define IP range for this network
+
+# Services are the containers we want to run
+services:
+  
+  # Service 1: Our ML inference API
+  inference-service:
+    # Option 1: Use pre-built image
+
+    # image: vit-inference
+
+    
+    # Option 2: Build from Dockerfile (uncomment if you want to rebuild)
+    build:
+      context: .
+      dockerfile: inference_serving/Dockerfile
+    
+    # Container name (for easy docker ps identification)
+    container_name: vit-inference-api
+    
+    # Restart policy - critical for production-like behavior
+    restart: unless-stopped  # Auto-restart unless explicitly stopped
+    
+    # Port mapping: host:container
+    # This exposes the service to your host machine
+    ports:
+      - "8000:8000"  # API endpoint
+      - "8801:8801"  # Metrics endpoint (Prometheus scrapes this)
+    
+    # Environment variables - configuration as code
+    environment:
+      - MODEL_PATH=/app/model_artifacts
+      - BATCH_SIZE=16
+      - MAX_WAIT_MS=50
+      - NUM_WORKER_THREADS=2
+      - PROM_PORT=8801
+    
+    # Health check - Docker monitors service health
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz').read()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s  # Grace period for model loading
+    
+    # Resource limits - prevent resource exhaustion
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'      # Maximum 2 CPU cores
+          memory: 4G        # Maximum 4GB RAM
+        reservations:
+          cpus: '0.5'      # Guaranteed 0.5 CPU cores
+          memory: 1G        # Guaranteed 1GB RAM
+    
+    # Attach to custom network
+    networks:
+      - vit-network
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"    # Rotate logs at 10MB
+        max-file: "3"      # Keep 3 log files
+  
+  # Service 2: Prometheus monitoring
+  prometheus:
+    # Use official Prometheus image from Docker Hub
+    image: prom/prometheus:v2.48.0
+    
+    container_name: prometheus-monitor
+    
+    restart: unless-stopped
+    
+    # Command line arguments to Prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'      # Config location
+      - '--storage.tsdb.path=/prometheus'                    # Data directory
+      - '--storage.tsdb.retention.time=7d'                   # Keep 7 days of data
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'                             # Allow API reload
+    
+    # Mount configuration and data
+    volumes:
+      # Mount our config file into container
+      - ./prometheous/prometheous.yml:/etc/prometheus/prometheus.yml:ro
+      
+      # Mount volume for persistent data storage
+      - prometheus-data:/prometheus
+    
+    # Expose Prometheus web UI
+    ports:
+      - "9090:9090"  # Web UI and API
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2G
+        reservations:
+          cpus: '0.25'
+          memory: 512M
+    
+    # Network attachment
+    networks:
+      - vit-network
+    
+    # Service dependency - wait for inference service to be healthy
+    depends_on:
+      inference-service:
+        condition: service_healthy
+  
+  # Service 3 (Optional): Grafana for visualization
+  # Uncomment this block if you want a dashboard UI
+  # grafana:
+  #   image: grafana/grafana:10.2.0
+  #   container_name: grafana-dashboard
+  #   restart: unless-stopped
+  #   
+  #   ports:
+  #     - "3000:3000"
+  #   
+  #   environment:
+  #     - GF_SECURITY_ADMIN_USER=admin
+  #     - GF_SECURITY_ADMIN_PASSWORD=admin
+  #     - GF_USERS_ALLOW_SIGN_UP=false
+  #   
+  #   volumes:
+  #     - grafana-data:/var/lib/grafana
+  #   
+  #   networks:
+  #     - vit-network
+  #   
+  #   depends_on:
+  #     - prometheus
+
+# Volumes for persistent data
+# Docker manages these, survives container restarts
+volumes:
+  prometheus-data:
+    driver: local  # Store on local disk
+  # grafana-data:
+  #   driver: local

@@ -1,0 +1,10 @@
+mlflow_params:
+  tracking_uri: http://127.0.0.1:5000
+model_params:
+  model_name: Vit_Classifier_test_register
+  candidate_run_id: bec03ba0f4204272a0af7c8d6c41684f
+evaluation_parameters:
+  min_delta_acc: 0.005
+  max_f1_drop: 0.002
+  max_latency_mult: 1.1
+  validation_accuracy: 20

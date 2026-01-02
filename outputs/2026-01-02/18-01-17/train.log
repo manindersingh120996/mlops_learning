@@ -1,0 +1,7 @@
+[2026-01-02 18:01:21,033][__main__][INFO] - All artifacts will be saved to: C:\Projects\ViT\vision-transformer-from-scratch\outputs\2026-01-02\18-01-17
+[2026-01-02 18:01:21,034][__main__][INFO] - MLflow Run ID: 896157b70f904411984623ba4f6a7f26
+[2026-01-02 18:01:21,843][google.auth.compute_engine._metadata][WARNING] - Compute Engine Metadata server unavailable on attempt 1 of 3. Reason: [WinError 10051] A socket operation was attempted to an unreachable network
+[2026-01-02 18:01:22,891][google.auth.compute_engine._metadata][WARNING] - Compute Engine Metadata server unavailable on attempt 2 of 3. Reason: [WinError 10051] A socket operation was attempted to an unreachable network
+[2026-01-02 18:01:24,717][google.auth.compute_engine._metadata][WARNING] - Compute Engine Metadata server unavailable on attempt 3 of 3. Reason: [WinError 10051] A socket operation was attempted to an unreachable network
+[2026-01-02 18:01:24,718][google.auth._default][WARNING] - Authentication failed using Compute Engine authentication due to unavailable metadata server.
+[2026-01-02 18:01:25,209][google.auth.transport.requests][INFO] - Refreshing credentials due to a 401 response. Attempt 1/2.

@@ -1,0 +1,4 @@
+mlflow==3.5.1
+torch==2.5.1+cu121
+torchvision
+pillow

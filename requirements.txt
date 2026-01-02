@@ -9,3 +9,10 @@ streamlit==1.46.0
 torch==2.7.0
 torchinfo==1.8.0
 torchvision==0.22.0
+fastapi
+uvicorn[standard]
+torch
+torchvision
+pillow
+mlflow
+prometheus_client

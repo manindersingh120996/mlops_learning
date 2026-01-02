@@ -1,0 +1,42 @@
+[2026-01-02 18:07:16,458][__main__][INFO] - All artifacts will be saved to: C:\Projects\ViT\vision-transformer-from-scratch\outputs\2026-01-02\18-07-12
+[2026-01-02 18:07:16,459][__main__][INFO] - MLflow Run ID: ccc8fee2363a4b0f8621f39c91767dcd
+[2026-01-02 18:07:22,108][__main__][INFO] - --- Configuration ---
+[2026-01-02 18:07:22,112][__main__][INFO] - 
+model:
+  in_channels: 3
+  image_size: 224
+  patch_size: 16
+  number_of_encoder: 6
+  embedding_dims: 256
+  d_ff_scale_factor: 4
+  heads: 8
+  input_dropout_rate: 0.1
+  attention_dropout_rate: 0.1
+  feed_forward_dropout_rate: 0.1
+  number_of_classes: 4
+train:
+  batch_size: 32
+  epochs: 2
+  train_dataset_path: dataset_path/tom_and_jerry/subset/train
+  test_dataset_path: dataset_path/tom_and_jerry/subset/test
+optimizer:
+  lr: 0.0003
+  weight_decay: 0.1
+  beta1: 0.9
+  beta2: 0.999
+
+[2026-01-02 18:07:22,114][__main__][INFO] - ---------------------
+[2026-01-02 18:07:22,114][__main__][INFO] - Dataset Creation Begin
+[2026-01-02 18:07:22,130][__main__][INFO] - Dataset Created
+[2026-01-02 18:07:22,130][__main__][INFO] - Dataset Classes: {'jerry': 0, 'tom': 1, 'tom_jerry_0': 2, 'tom_jerry_1': 3}
+[2026-01-02 18:07:22,191][__main__][INFO] - Mapping saved at: C:\Projects\ViT\vision-transformer-from-scratch\outputs\2026-01-02\18-07-12\class_mapping.json
+[2026-01-02 18:07:24,648][__main__][INFO] - Model Creation Begin
+[2026-01-02 18:07:25,017][__main__][INFO] - Model Creation Completed.
+[2026-01-02 18:07:25,017][__main__][INFO] - --- Model Summary ---
+[2026-01-02 18:07:25,682][__main__][INFO] - --------------------
+[2026-01-02 18:07:26,904][__main__][INFO] - MODEL TRAINING BEGINS...
+[2026-01-02 18:07:57,110][__main__][INFO] - Epoch 1 | train_loss: 1.5501 | train_accuracy: 0.2578 | val_loss: 1.9090 | val_accuracy: 0.1562 | LR: 0.000210
+[2026-01-02 18:09:00,085][__main__][INFO] - Epoch 2 | train_loss: 1.4257 | train_accuracy: 0.2500 | val_loss: 1.2861 | val_accuracy: 0.4844 | LR: 0.000000
+[2026-01-02 18:09:28,628][__main__][INFO] - Storing training artifacts details
+[2026-01-02 18:09:28,653][__main__][INFO] - Working on Training Plots...
+[2026-01-02 18:09:32,339][__main__][INFO] - Saved training plot to C:\Projects\ViT\vision-transformer-from-scratch\outputs\2026-01-02\18-07-12\training_curves.png
