@@ -1,0 +1,62 @@
+name: Register Model
+
+on:
+  workflow_dispatch:
+    inputs:
+      model_path:
+        description: 'Path to Model Checkpoint  (e.g., outputs/2025-01-15/12-30-45)'
+        required: true
+        type: string
+      run_id:
+        description: 'MLflow run ID (found in run_id.txt)'
+        required: false
+        type: string
+
+      model_name:
+        description: "Model name to have registeration with"
+        required: false
+        type: string
+        default: "Vit_Classifier_test_register"
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setting up Python 3.10
+        uses: actions/setup-python@v4
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install mlflow boto3
+
+      - name: Register model in MLflow
+        env:
+          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI}}
+        run: |
+          python model_registeration.py \
+            --model_path ${{inputs.model_path}}\
+            --run_id ${{inputs.run_id}}
+
+      - name: Seng email Notification
+        if: success()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{secrets.EMAIL_USERNAME}}
+          password: ${{secrets.EMAIL_PASSWORD}}
+          subject: "Model Registeration Successful"
+          body: |
+            Model has been registered successfully in MLFlow
+
+            Model Path: ${{inputs.model_path}}
+            Model Registered with Name: ${{inputs.model_name}}
+
+            View in MLFlow: ${{secrets.MLFLOW_TRACKING_URI}}
+          to: ms542516@gmail.com
+          from: GitHub Actions
