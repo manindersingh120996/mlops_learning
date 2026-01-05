@@ -42,7 +42,7 @@ def download_model():
         print(f"   Next step: docker build -t vit-inference -f inference_serving/Dockerfile .")
         
 # When you train a new model, just:
-# bashpython download_model.py  # Downloads latest model
+# python download_model.py  # Downloads latest model
 # docker build -t vit-inference:v2.0 .  # Rebuilds with new model
 
 

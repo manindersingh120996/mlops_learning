@@ -1,0 +1,537 @@
+name: Promote Model to Production and Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      model_name:
+        description: "Model name to Promote"
+        required: true
+        type: string
+        default: 'Vit_Classifier_test_register'
+      environment:
+        description: "Deployement environment"
+        required: true
+        type: choice
+        options:
+          - production
+        default: 'production'
+      auto_deploy:
+        description: 'Automatically deploy after promotion'
+        required: true
+        type: boolean
+        default: true
+
+jobs:
+  promote-model:
+    name: Promote Candidate to Production
+    runs-on: ubuntu-latest
+
+    outputs:
+      promotion_status: ${{steps.promote.outputs.status}}
+      promotion_message: ${{steps.promote.outputs.message}}
+      promoted_version: ${{steps.promote.outputs.version}}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      
+      - name: Install MlFlow Client
+        run: |
+          python -m pip install --upgrade pip
+          pip install mlflow boto3
+
+      - name: Promote candidate to production
+        id: promote
+        env:
+          MLFLOW_TRACKING_URI: ${{secrets.MLFLOW_TRACKING_URI}}
+        run: |
+          echo "Starting promotion process..."
+          echo "Model: ${{inputs.model_name}}"
+          echo "MlFlow URI: ${{secrets.MLFLOW_TRACKING_URI}}"
+
+          set +e # it is here so that it doens't exit on error as we want to use the error for further tasks
+          python promote_to_production_for_gcp.py
+          EXIT_CODE=$?
+          set -e # Re enabling exit on error
+
+          echo "Promotion script exit code: $EXIT_CODE"
+
+          CASE $EXIT_CODE in
+            0)
+              echo "status=success" >> $GITHUB_OUTPUT
+              echo "message=Model successfully promoted to production" >> $GITHUB_OUTPUT
+
+              PROMOTOED_VERSION=$(python -c "
+          import mlflow
+          from mlflow.tracking import MlflowClient
+          mlflow.set_tracking_uri('${{secrets.MLFLOW_TRACKING_URI}}')
+          client = MlflowClient()
+          prod = client.get_model_version_by_alias('${{inputs.model_name}}','production')
+          print(prod.version)
+          ")
+              echo "version=$PROMOTED_VERSION" >> $GITHUB_OUTPUT
+              echo "✅ Promotion successful - version $PROMOTED_VERSION"
+              exit 0
+              ;;
+            1)
+              echo "status=no_candidate" >> $GITHUB_OUTPUT
+              echo "message=No candidate model found. Please register a model with 'candidate' alias first." >> $GITHUB_OUTPUT
+              echo "version=none" >> $GITHUB_OUTPUT
+              echo "❌ No candidate model found"
+              exit 1
+              ;;
+            2)
+              echo "status=same_model" >> $GITHUB_OUTPUT
+              echo "message=Candidate and production are the same model. Train a new model before promotion." >> $GITHUB_OUTPUT
+              echo "version=none" >> $GITHUB_OUTPUT
+              echo "❌ Candidate same as production"
+              exit 2
+              ;;
+            3)
+              echo "status=metrics_worse" >> $GITHUB_OUTPUT
+              echo "message=Candidate metrics did not improve over production. No promotion performed." >> $GITHUB_OUTPUT
+              echo "version=none" >> $GITHUB_OUTPUT
+              echo "❌ Metrics did not improve"
+              exit 3
+              ;;
+            *)
+              echo "status=unknown_error" >> $GITHUB_OUTPUT
+              echo "message=Unknown error occurred during promotion (exit code: $EXIT_CODE)" >> $GITHUB_OUTPUT
+              echo "version=none" >> $GITHUB_OUTPUT
+              echo "❌ Unknown error"
+              exit $EXIT_CODE
+              ;;
+          esac
+
+      
+      - name: Send promotion success email
+        if: steps.promote.outputs.status == 'success'
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "✅ Model Promoted to Production - Version ${{ steps.promote.outputs.version }}"
+          body: |
+            Model promotion successful!
+            
+            📦 Model Details:
+            - Name: ${{ inputs.model_name }}
+            - Version: ${{ steps.promote.outputs.version }}
+            - Alias: production
+            
+            🔗 View in MLflow:
+            ${{ secrets.MLFLOW_TRACKING_URI }}
+            
+            ⏭️ Next Steps:
+            ${{ inputs.auto_deploy == true && 'Deployment to Cloud Run will start automatically.' || 'Manual deployment required - use "Deploy Model" workflow.' }}
+            
+            👤 Triggered by: ${{ github.actor }}
+            🔗 Workflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          to: ${{ secrets.NOTIFICATION_EMAIL }}
+          from: GitHub Actions <noreply@github.com>
+      
+      - name: Send promotion failure email - No candidate
+        if: steps.promote.outputs.status == 'no_candidate'
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "⚠️ Model Promotion Failed - No Candidate Model"
+          body: |
+            Model promotion failed - No candidate model found.
+            
+            📦 Model: ${{ inputs.model_name }}
+            
+            ❌ Issue:
+            No model with alias 'candidate' exists in the registry.
+            
+            🔧 Required Actions:
+            1. Train a new model
+            2. Register it using the "Register Model" workflow
+            3. Run "Evaluate and Promote" workflow to create candidate
+            4. Retry this promotion workflow
+            
+            👤 Triggered by: ${{ github.actor }}
+            🔗 Workflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          to: ${{ secrets.NOTIFICATION_EMAIL }}
+          from: GitHub Actions <noreply@github.com>
+      
+      - name: Send promotion failure email - Same model
+        if: steps.promote.outputs.status == 'same_model'
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "⚠️ Model Promotion Failed - Same Model Already in Production"
+          body: |
+            Model promotion failed - Candidate is the same as production.
+            
+            📦 Model: ${{ inputs.model_name }}
+            
+            ❌ Issue:
+            The candidate model and production model have the same run_id.
+            This means no new model has been trained.
+            
+            🔧 Required Actions:
+            1. Train a new model with improved metrics
+            2. Register the new model
+            3. Retry promotion
+            
+            💡 Tip:
+            Check your training experiments in MLflow to ensure new runs are being logged.
+            
+            👤 Triggered by: ${{ github.actor }}
+            🔗 Workflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          to: ${{ secrets.NOTIFICATION_EMAIL }}
+          from: GitHub Actions <noreply@github.com>
+      
+      - name: Send promotion failure email - Metrics worse
+        if: steps.promote.outputs.status == 'metrics_worse'
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "⚠️ Model Promotion Failed - Metrics Did Not Improve"
+          body: |
+            Model promotion failed - Candidate metrics did not improve.
+            
+            📦 Model: ${{ inputs.model_name }}
+            
+            ❌ Issue:
+            The candidate model's validation accuracy did not exceed the current production model.
+            
+            🔧 Required Actions:
+            1. Review training experiments in MLflow
+            2. Analyze why metrics did not improve:
+               - Try different hyperparameters
+               - Add more training data
+               - Increase training epochs
+               - Adjust learning rate schedule
+            3. Train a better model
+            4. Retry promotion
+            
+            🔗 MLflow Experiments:
+            ${{ secrets.MLFLOW_TRACKING_URI }}
+            
+            👤 Triggered by: ${{ github.actor }}
+            🔗 Workflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          to: ${{ secrets.NOTIFICATION_EMAIL }}
+          from: GitHub Actions <noreply@github.com>
+
+
+  deploy-model:
+    name: Deploy to Cloud Run
+    needs: promote-model
+    if: |
+      needs.promote-model.outputs.promotion_status == 'success' &&
+      inputs.auto_deploy == true
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python 3.10
+        uses: actions/ setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install mlflow boto3 google-cloud-storage
+
+      - name: Authenticate to Foofle Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{secrets.GCP_CREDENTIALS}}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+
+      - name: Configure Docker for Artifact Registery
+        run: |
+          gcloud auth configure-docker ${{secrets.ARTIFACT_REGISTRY_REGION }}-docker.pkg.dev
+
+      - name: Downloading model from MLFLOW
+        env:
+          MLFLOW_TRACKING_URI: ${{secrets.MLFLOW_TRACKING_URI}}
+        run: |
+          echo "Downloading production model"
+
+          python inference_serving/download_model.py
+
+          echo "✅ Model downloaded successfully"
+
+      - name: Verifying the model ARTIFACts
+        run: |
+          echo "Verifying model artifacts..."
+          
+          if [ ! -d "./model_artifacts" ]; then
+            echo "❌ model_artifacts directory not found!"
+            exit 1
+          fi
+          
+          echo "Contents of model_artifacts:"
+          ls -la ./model_artifacts/
+          
+          if [ ! -f "./model_artifacts/MLmodel" ]; then
+            echo "❌ MLmodel file not found!"
+            exit 1
+          fi
+          
+          echo "✅ Model artifacts verified"   
+
+      - name: Build Docker image
+        run: |
+          IMAGE_NAME="${{ secrets.ARTIFACT_REGISTRY_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/ml-models/vit-inference"
+          IMAGE_TAG="${IMAGE_NAME}:prod-v${{ needs.promote-model.outputs.promoted_version }}-${{ github.sha }}"
+          
+          echo "Building Docker image..."
+          echo "Image: ${IMAGE_TAG}"
+          
+          docker build \
+            -t ${IMAGE_TAG} \
+            -t ${IMAGE_NAME}:latest \
+            -f Dockerfile .
+          
+          echo "IMAGE_TAG=${IMAGE_TAG}" >> $GITHUB_ENV
+          echo "IMAGE_NAME=${IMAGE_NAME}" >> $GITHUB_ENV
+          
+          echo "✅ Docker image built successfully"
+      
+      - name: Push image to Artifact Registry
+        run: |
+          echo "Pushing image to Artifact Registry..."
+          
+          docker push ${{ env.IMAGE_TAG }}
+          docker push ${{ env.IMAGE_NAME }}:latest
+          
+          echo "✅ Image pushed successfully"
+          echo "  - Tagged: ${{ env.IMAGE_TAG }}"
+          echo "  - Latest: ${{ env.IMAGE_NAME }}:latest"
+      
+      - name: Deploy to Cloud Run
+        run: |
+          SERVICE_NAME="vit-inference-${{ inputs.environment }}"
+          
+          echo "Deploying to Cloud Run..."
+          echo "Service: ${SERVICE_NAME}"
+          echo "Image: ${{ env.IMAGE_TAG }}"
+          
+          gcloud run deploy ${SERVICE_NAME} \
+            --image ${{ env.IMAGE_TAG }} \
+            --region ${{ secrets.GCP_REGION }} \
+            --platform managed \
+            --port 8080 \
+            --memory 4Gi \
+            --cpu 2 \
+            --timeout 300 \
+            --max-instances 10 \
+            --min-instances 0 \
+            --allow-unauthenticated \
+            --set-env-vars MODEL_PATH=/app/model_artifacts \
+            --set-labels model-version=v${{ needs.promote-model.outputs.promoted_version }},deployed-by=github-actions
+          
+          echo "SERVICE_NAME=${SERVICE_NAME}" >> $GITHUB_ENV
+          
+          echo "✅ Deployment command completed"
+      
+      - name: Get service URL
+        run: |
+          echo "Fetching service URL..."
+          
+          SERVICE_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} \
+            --region ${{ secrets.GCP_REGION }} \
+            --format='value(status.url)')
+          
+          echo "SERVICE_URL=${SERVICE_URL}" >> $GITHUB_ENV
+          echo "Service URL: ${SERVICE_URL}"
+      
+      - name: Wait for deployment to stabilize
+        run: |
+          echo "Waiting for deployment to stabilize..."
+          sleep 15
+
+      
+      - name: Run smoke tests
+        run: |
+          echo "Running smoke tests..."
+          echo "Testing: ${{ env.SERVICE_URL }}"
+          
+          # Test 1: Health endpoint
+          echo "Test 1: Health check..."
+          HEALTH_RESPONSE=$(curl -s -w "\n%{http_code}" "${{ env.SERVICE_URL }}/health_check")
+          HEALTH_CODE=$(echo "$HEALTH_RESPONSE" | tail -n 1)
+          HEALTH_BODY=$(echo "$HEALTH_RESPONSE" | head -n -1)
+          
+          echo "Response code: $HEALTH_CODE"
+          echo "Response body: $HEALTH_BODY"
+          
+          if [ "$HEALTH_CODE" != "200" ]; then
+            echo "❌ Health check failed (HTTP $HEALTH_CODE)"
+            exit 1
+          fi
+          
+          echo "✅ Health check passed"
+          
+          # Test 2: Readiness endpoint
+          echo "Test 2: Readiness check..."
+          READY_RESPONSE=$(curl -s -w "\n%{http_code}" "${{ env.SERVICE_URL }}/readyz")
+          READY_CODE=$(echo "$READY_RESPONSE" | tail -n 1)
+          
+          echo "Response code: $READY_CODE"
+          
+          if [ "$READY_CODE" != "200" ]; then
+            echo "❌ Readiness check failed (HTTP $READY_CODE)"
+            exit 1
+          fi
+          
+          echo "✅ Readiness check passed"
+          
+          # Test 3: Root endpoint
+          echo "Test 3: API info endpoint..."
+          ROOT_RESPONSE=$(curl -s -w "\n%{http_code}" "${{ env.SERVICE_URL }}/")
+          ROOT_CODE=$(echo "$ROOT_RESPONSE" | tail -n 1)
+          
+          echo "Response code: $ROOT_CODE"
+          
+          if [ "$ROOT_CODE" != "200" ]; then
+            echo "❌ Root endpoint check failed (HTTP $ROOT_CODE)"
+            exit 1
+          fi
+          
+          echo "✅ Root endpoint check passed"
+          echo "✅ All smoke tests passed!"
+      
+      - name: Send deployment success notification
+        if: success()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "✅ Production Deployment Successful - Model v${{ needs.promote-model.outputs.promoted_version }}"
+          body: |
+            🎉 Production deployment completed successfully!
+            
+            📦 Deployment Details:
+            - Model: ${{ inputs.model_name }}
+            - Version: ${{ needs.promote-model.outputs.promoted_version }}
+            - Environment: ${{ inputs.environment }}
+            - Image: ${{ env.IMAGE_TAG }}
+            
+            🌐 Service Information:
+            - URL: ${{ env.SERVICE_URL }}
+            - Region: ${{ secrets.GCP_REGION }}
+            - Health Check: ${{ env.SERVICE_URL }}/health
+            
+            ✅ Smoke Tests: All Passed
+            - Health endpoint: ✓
+            - Readiness endpoint: ✓
+            - API info endpoint: ✓
+            
+            🧪 Test the Service:
+            curl ${{ env.SERVICE_URL }}/health
+            
+            📊 Monitor in GCP Console:
+            https://console.cloud.google.com/run/detail/${{ secrets.GCP_REGION }}/${{ env.SERVICE_NAME }}/metrics
+            
+            👤 Deployed by: ${{ github.actor }}
+            🔗 Workflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            
+            ---
+            Deployment completed at: ${{ github.event.head_commit.timestamp }}
+          to: ${{ secrets.NOTIFICATION_EMAIL }}
+          from: GitHub Actions <noreply@github.com>
+      
+      - name: Send deployment failure notification
+        if: failure()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "❌ Production Deployment Failed - Model v${{ needs.promote-model.outputs.promoted_version }}"
+          body: |
+            ❌ Production deployment failed!
+            
+            📦 Attempted Deployment:
+            - Model: ${{ inputs.model_name }}
+            - Version: ${{ needs.promote-model.outputs.promoted_version }}
+            - Environment: ${{ inputs.environment }}
+            
+            🔍 Check Logs:
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            
+            🔧 Common Issues:
+            - Model artifacts not found or corrupted
+            - Docker build failure
+            - Cloud Run deployment timeout
+            - Smoke tests failed (service not responding)
+            
+            ⚠️ IMPORTANT:
+            The model was promoted to production in MLflow but deployment failed.
+            You may need to:
+            1. Fix the deployment issue
+            2. Retry deployment manually using "Deploy Model" workflow
+            
+            👤 Triggered by: ${{ github.actor }}
+          to: ${{ secrets.NOTIFICATION_EMAIL }}
+          from: GitHub Actions <noreply@github.com>
+
+          
+
+
+
+
+
+
+
+
+
+# name: Promote to production and deploy the model
+
+# on:
+#   workflow_dispatch:
+
+
+# jobs:
+#   promoting-the-model:
+#     runs-on: ubuntu-latest
+    
+#     steps: 
+#       - name: Checkout repository
+#         uses: actions/checkout@v3
+
+#       - name: Setting up Python 3.10
+#         uses: actions/setup-python@v4
+#         with:
+#           python-version: '3.10'
+
+#       - name: Installing MLFlow Client
+#         uses: |
+#           python -m pip install --upgrade pip
+#           pip install mlflow boto3
+
+#       - name: Moving Candidate model to Production
+#         env:
+#           MLFLOW_TRACKING_URI: ${{secrets.MLFLOW_TRACKING_URI}}
+#         run: |
+#           python promote_to_production_for_gcp.py
+
