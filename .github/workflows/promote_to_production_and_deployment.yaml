@@ -61,7 +61,7 @@ jobs:
 
           echo "Promotion script exit code: $EXIT_CODE"
 
-          CASE $EXIT_CODE in
+          case $EXIT_CODE in
             0)
               echo "status=success" >> $GITHUB_OUTPUT
               echo "message=Model successfully promoted to production" >> $GITHUB_OUTPUT
