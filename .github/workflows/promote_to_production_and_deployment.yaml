@@ -361,7 +361,7 @@ jobs:
             --min-instances 0 \
             --allow-unauthenticated \
             --set-env-vars MODEL_PATH=/app/model_artifacts \
-            --set-labels model-version=v${{ needs.promote-model.outputs.promoted_version }},deployed-by=github-actions
+            --labels model-version=v${{ needs.promote-model.outputs.promoted_version }},deployed-by=github-actions
           
           echo "SERVICE_NAME=${SERVICE_NAME}" >> $GITHUB_ENV
           
