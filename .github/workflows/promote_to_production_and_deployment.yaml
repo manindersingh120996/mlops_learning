@@ -292,7 +292,7 @@ jobs:
           echo "Contents of model_artifacts:"
           ls -la ./model_artifacts/
           
-          if [ ! -f "./model_artifacts/MLmodel" ]; then
+          if [ ! -f "./model_artifacts/MLmodel/MLmodel" ]; then
             echo "❌ MLmodel file not found!"
             exit 1
           fi
