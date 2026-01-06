@@ -23,7 +23,8 @@ def download_model():
     
     # Download model
     print("\n🔄 Downloading model from MLflow...")
-    model_uri = f"models:/{MODEL_NAME}@{MODEL_ALIAS}"
+    # model_uri = f"models:/{MODEL_NAME}@{MODEL_ALIAS}"
+    model_uri = f"models:/{MODEL_NAME}@{MODEL_ALIAS}/model"
     print("----------"*4)
     print(f"MODEL URI: ",model_uri)
     print("----------"*4)
