@@ -24,6 +24,9 @@ def download_model():
     # Download model
     print("\n🔄 Downloading model from MLflow...")
     model_uri = f"models:/{MODEL_NAME}@{MODEL_ALIAS}"
+    print("----------"*4)
+    print(f"MODEL URI: ",model_uri)
+    print("----------"*4)
     
     try:
         # This downloads the model to OUTPUT_DIR
