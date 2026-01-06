@@ -7,7 +7,7 @@ import mlflow
 import mlflow.pytorch
 
 # Configuration
-MLFLOW_TRACKING_URI = os.environ.get("MLFLOW_TRACKING_URI", "http://localhost:5000")
+MLFLOW_TRACKING_URI = os.environ.get("MLFLOW_TRACKING_URI", "https://mlflow-server-819532171216.us-central1.run.app/")
 MODEL_NAME = os.environ.get("MODEL_NAME", "Vit_Classifier_test_register")
 MODEL_ALIAS = os.environ.get("MODEL_ALIAS", "production")
 OUTPUT_DIR = "./model_artifacts"
