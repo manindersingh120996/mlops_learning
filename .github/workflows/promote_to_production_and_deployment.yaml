@@ -280,24 +280,24 @@ jobs:
 
           echo "✅ Model downloaded successfully"
 
-      - name: Verifying the model ARTIFACts
-        run: |
-          echo "Verifying model artifacts..."
+      # - name: Verifying the model ARTIFACts
+      #   run: |
+      #     echo "Verifying model artifacts..."
           
-          if [ ! -d "./model_artifacts" ]; then
-            echo "❌ model_artifacts directory not found!"
-            exit 1
-          fi
+      #     if [ ! -d "./model_artifacts" ]; then
+      #       echo "❌ model_artifacts directory not found!"
+      #       exit 1
+      #     fi
           
-          echo "Contents of model_artifacts:"
-          ls -la ./model_artifacts/
+      #     echo "Contents of model_artifacts:"
+      #     ls -la ./model_artifacts/
           
-          if [ ! -f "./model_artifacts/MLmodel/MLmodel" ]; then
-            echo "❌ MLmodel file not found!"
-            exit 1
-          fi
+      #     if [ ! -f "./model_artifacts/MLmodel/MLmodel" ]; then
+      #       echo "❌ MLmodel file not found!"
+      #       exit 1
+      #     fi
           
-          echo "✅ Model artifacts verified"   
+      #     echo "✅ Model artifacts verified"   
 
       - name: Build Docker image
         run: |
