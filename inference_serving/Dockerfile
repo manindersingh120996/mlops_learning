@@ -7,11 +7,14 @@ RUN apt-get update && \
 
 WORKDIR /app
 
+RUN pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu
+
 # Copy and install Python dependencies
 COPY requirements.txt /app/
+
 RUN pip install --upgrade pip && \
-    pip install -r requirements.txt && \
-    pip install python-multipart
+    pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir python-multipart
 
 # Copy application code
 COPY inference_serving/inference_serving_docker.py /app/

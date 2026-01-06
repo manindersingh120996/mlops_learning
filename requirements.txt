@@ -6,9 +6,9 @@ pandas==2.2.3
 pillow==11.2.1
 psutil==7.0.0
 streamlit==1.46.0
-torch==2.7.0
-torchinfo==1.8.0
-torchvision==0.22.0
+# torch==2.7.0
+# torchinfo==1.8.0
+# torchvision==0.22.0
 fastapi
 uvicorn[standard]
 torch
