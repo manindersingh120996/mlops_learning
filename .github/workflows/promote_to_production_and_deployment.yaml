@@ -258,6 +258,10 @@ jobs:
         uses: google-github-actions/auth@v1
         with:
           credentials_json: ${{secrets.GCP_CREDENTIALS}}
+          export_environment_variables: true
+      - name: Configure ADC for Python
+        run: |
+          echo "$GOOGLE_APPLICATION_CREDENTIALS"
 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v1
