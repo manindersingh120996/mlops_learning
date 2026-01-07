@@ -353,7 +353,7 @@ jobs:
             --image ${{ env.IMAGE_TAG }} \
             --region ${{ secrets.GCP_REGION }} \
             --platform managed \
-            --port 8080 \
+            --port 8000 \
             --memory 4Gi \
             --cpu 2 \
             --timeout 300 \
