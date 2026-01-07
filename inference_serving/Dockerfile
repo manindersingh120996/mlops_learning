@@ -25,7 +25,7 @@ COPY inference_serving/src /app/src
 # Copy the pre-downloaded model artifacts
 # IMPORTANT: Copy the entire model directory, not just MLmodel
 # COPY inference_serving/model_artifacts/ /app/model_artifacts/
-COPY inference_serving/model_artifacts/MLmodel/ /app/model_artifacts/
+COPY inference_serving/model_artifacts/MLmodel/ /app/model_artifacts/MLmodel/
 
 # Configure environment
 ENV MODEL_PATH=/app/model_artifacts/MLmodel/
