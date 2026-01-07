@@ -24,10 +24,11 @@ COPY inference_serving/src /app/src
 
 # Copy the pre-downloaded model artifacts
 # IMPORTANT: Copy the entire model directory, not just MLmodel
-COPY inference_serving/model_artifacts/ /app/model_artifacts/
+# COPY inference_serving/model_artifacts/ /app/model_artifacts/
+COPY inference_serving/model_artifacts/MLmodel/ /app/model_artifacts/
 
 # Configure environment
-ENV MODEL_PATH=/app/model_artifacts
+ENV MODEL_PATH=/app/model_artifacts/MLmodel/
 ENV BATCH_SIZE=8
 ENV MAX_WAIT_MS=50
 ENV NUM_WORKER_THREADS=2
