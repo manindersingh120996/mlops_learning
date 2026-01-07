@@ -26,6 +26,9 @@ MAX_WAIT_MS = int(os.environ.get("MAX_WAIT_MS", "50"))
 NUM_WORKER_THREADS = int(os.environ.get("NUM_WORKER_THREADS", "2"))
 PROM_PORT = int(os.environ.get("PROM_PORT", "8801"))
 
+PORT = int(os.environ.get("PORT", "8000"))
+
+
 
 # Prometheus metrics
 REQUEST_TIME = Summary("inference_latency_seconds", "Inference latency in seconds")
@@ -214,6 +217,9 @@ async def lifespan(app: FastAPI):
     """Application lifespan manager"""
     global inference_queue, batch_worker_task, executor
 
+
+    LOG.info(f"🚀 Starting application on port {PORT}")
+
     # Start Prometheus metrics server
     start_http_server(PROM_PORT)
     LOG.info(f"📊 Prometheus metrics server started on port {PROM_PORT}")
@@ -358,6 +364,7 @@ async def metrics_info():
     }
 
 
+
 @app.get("/")
 async def root():
     """Root endpoint with API information"""
@@ -365,9 +372,10 @@ async def root():
         "service": "ViT Inference API",
         "version": "1.0.0",
         "status": "running",
+        "port": PORT,
         "endpoints": {
             "predict": "/predict",
-            "health": "/healthz",
+            "health": "/health_check",
             "readiness": "/readyz",
             "metrics": f"http://localhost:{PROM_PORT}/metrics",
             "docs": "/docs"
