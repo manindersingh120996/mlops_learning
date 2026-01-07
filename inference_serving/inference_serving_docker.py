@@ -18,9 +18,9 @@ import io
 LOG = logging.getLogger("uvicorn.error")
 LOG.setLevel(logging.INFO)
 
-
+# COPY inference_serving/model_artifacts/MLmodel/ /app/model_artifacts/
 # Configuration from environment variables
-MODEL_PATH = os.environ.get("MODEL_PATH", "/app/model_artifacts")
+MODEL_PATH = os.environ.get("MODEL_PATH", "/app/model_artifacts/MLmodel/")
 BATCH_SIZE = int(os.environ.get("BATCH_SIZE", "8"))
 MAX_WAIT_MS = int(os.environ.get("MAX_WAIT_MS", "50"))
 NUM_WORKER_THREADS = int(os.environ.get("NUM_WORKER_THREADS", "2"))
